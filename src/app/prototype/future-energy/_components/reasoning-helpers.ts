@@ -263,8 +263,8 @@ export function buildActionBoardHeroReasoning(
     steps,
     evidence,
     conclusion: fr
-      ? `${active.length} lots sont actifs sur ce tableau. Consultez les liens de sources pour examiner chaque document ou espace de travail.`
-      : `${active.length} packages are live on this board. Follow the view sources links to inspect each underlying document or workspace.`,
+      ? `${active.length} lots sont ouverts sur ce tableau. Consultez les liens de sources pour examiner chaque document ou espace de travail.`
+      : `${active.length} packages are open on this board. Follow the view sources links to inspect each underlying document or workspace.`,
     citations,
   }
 }

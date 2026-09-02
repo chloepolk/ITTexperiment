@@ -10,7 +10,6 @@ import { createT, localeTag, type Locale } from "../_i18n"
 import { formatDateDMY } from "@/lib/compass/locale-display"
 import { localizeRole } from "../_i18n/domain"
 import {
-  TENDER_SUGGESTIONS,
   localizeComponentSpec,
   localizedComponentSpecs,
   localizedDocuments,
@@ -22,6 +21,7 @@ import {
   localizeQuantity,
   resolveLocalizedComponent,
   resolveLocalizedQuantity,
+  tenderSuggestions,
 } from "../_i18n/tender"
 import { enterMotion, listItemMotion, pcmButton, pcmCard } from "../_components/motion"
 import { ACTIVE_USER } from "../_components/hub/active-user"
@@ -622,7 +622,7 @@ export function TenderStudioPage() {
         if (s) {
           const localSpec = localizeComponentSpec(s, locale)
           const localQuantity = localizeQuantity(
-            displayPackageQuantity(t.id, t.quantity, appliedTenderQtyByPackage, locale),
+            displayPackageQuantity(t.id, t.quantity, appliedTenderQtyByPackage, locale, inventoryOverlays),
             locale,
           )
           setPrompt(locale === "fr"
@@ -692,8 +692,11 @@ export function TenderStudioPage() {
       return
     }
     runningRef.current = true
-    const qty = resolveLocalizedQuantity(text, resolved, locale)
     const matchedPkg = TENDER_PACKAGES.find(p => p.componentId === resolved.id) ?? null
+    const liveQty = matchedPkg
+      ? displayPackageQuantity(matchedPkg.id, matchedPkg.quantity, appliedTenderQtyByPackage, locale, inventoryOverlays)
+      : null
+    const qty = liveQty ?? resolveLocalizedQuantity(text, resolved, locale)
 
     setSpec(localizeComponentSpec(resolved, locale))
     setQuantity(qty)
@@ -759,7 +762,7 @@ export function TenderStudioPage() {
       audit: auditOut,
       submitted: false,
     })
-  }, [locale, saveDraftedTender])
+  }, [locale, saveDraftedTender, appliedTenderQtyByPackage, inventoryOverlays])
 
   const submitForApproval = React.useCallback(() => {
     if (!pkg) return
@@ -831,7 +834,12 @@ export function TenderStudioPage() {
             {phase === "idle" && (
               <div className="space-y-1.5 pt-1">
                 <p className="text-[10px] font-semibold uppercase tracking-[1px] text-[var(--color-text-muted)]">{t("tenderStudio.suggestions")}</p>
-                {TENDER_SUGGESTIONS[locale].map(p => (
+                {tenderSuggestions(locale, {
+                  cable: displayPackageQuantity("PKG-2101", "5,000 metres", appliedTenderQtyByPackage, locale, inventoryOverlays),
+                  transitionPieces: displayPackageQuantity("PKG-2102", "24 units", appliedTenderQtyByPackage, locale, inventoryOverlays),
+                  hookBlock: displayPackageQuantity("PKG-2103", "1 unit", appliedTenderQtyByPackage, locale, inventoryOverlays),
+                  seals: displayPackageQuantity("PKG-2105", "60 units", appliedTenderQtyByPackage, locale, inventoryOverlays),
+                }).map(p => (
                   <button
                     key={p}
                     type="button"
@@ -1361,14 +1369,7 @@ export function TenderStudioPage() {
         <RecordDispositionModal
           action={heldDispositionAction}
           overlays={inventoryOverlays}
-          appliedQty={pkg ? appliedTenderQtyByPackage[pkg.id] : undefined}
           onRecord={recordInventoryDisposition}
-          onApplyResidual={(packageId) => applyResidualToTender(packageId, ACTIVE_USER.name)}
-          onOpenTenderStudio={() => setHeldDispositionAction(undefined)}
-          onOpenBidEvaluation={(packageId) => {
-            setHeldDispositionAction(undefined)
-            openBidEvaluation(packageId)
-          }}
           onClose={() => setHeldDispositionAction(undefined)}
         />
       )}

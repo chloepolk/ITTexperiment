@@ -164,9 +164,9 @@ const fr: EnMessages = {
     valueProtection: "Protection de valeur",
     valueCreation: "Création de valeur",
     heroHeadline:
-      "{amount} d’économies négociées sont en jeu sur le pipeline d’appels d’offres Meridian.",
+      "{amount} est l’objectif d’économies négociées sur le pipeline d’appels d’offres Meridian.",
     heroBody:
-      "{count} lots sont actifs. Quatre réponses ont été reçues sur l’AO câble d’array 66 kV — lancez l’évaluation (portes d’entrée, puis notation) avant la recommandation d’attribution.",
+      "{count} lots sont ouverts. Quatre réponses ont été reçues sur l’AO câble d’array 66 kV. Lancez l’évaluation (portes d’entrée, puis notation) avant la recommandation d’attribution.",
     heroReasoningSummary:
       "BluePilot a priorisé le pipeline selon l'échéance de soumission, l'objectif d'économies et le chemin critique d'installation.",
     ingestingEdit: "Prise en compte de votre modification…",
@@ -204,7 +204,7 @@ const fr: EnMessages = {
     selectReason: "Sélectionnez un motif",
     approveFrom: "Approuver {qty} depuis {id}",
     residualPreview:
-      "Si elle est enregistrée, l’inventaire approuvé serait de {approved} et la quantité d’achat résiduelle de {residual} sur {requested} demandée. La quantité d’AO proposée ne change qu’après une confirmation distincte.",
+      "Si elle est enregistrée, l’inventaire approuvé serait de {approved} et la quantité d’achat résiduelle de {residual} sur {requested} demandée. La quantité d’AO proposée devient {residual}.",
     avoidanceIfApproved:
       "Opportunité d’évitement d’achat identifiée si cette quantité est approuvée\u00a0: {amount} (pas des économies réalisées).",
     recordDisposition: "Enregistrer la disposition",
@@ -656,7 +656,7 @@ const fr: EnMessages = {
     more: "+{count} de plus",
     matrixTitle: "Matrice de rentabilité Compass",
     matrixBody: "Chaque recommandation et sa valeur — son effet sur la marge et son horizon.",
-    totalAtStake: "Valeur totale en jeu",
+    totalAtStake: "Objectif d’économies",
     protectionBlurb: "Défendre la marge existante",
     creationBlurb: "Créer de nouveaux revenus et de la marge",
     shock: "Immédiat",

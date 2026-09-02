@@ -127,7 +127,6 @@ export function OperatingLoopPage() {
     inventoryOverlays,
     recordInventoryDisposition,
     appliedTenderQtyByPackage,
-    applyResidualToTender,
   } = useStore()
   const flightPathSteps = translatedFlightPathSteps(t)
 
@@ -163,8 +162,8 @@ export function OperatingLoopPage() {
   }, [])
 
   const { missions, closed } = React.useMemo(
-    () => buildDiamondMissions(tenderStages, locale, appliedTenderQtyByPackage),
-    [tenderStages, locale, appliedTenderQtyByPackage],
+    () => buildDiamondMissions(tenderStages, locale, appliedTenderQtyByPackage, inventoryOverlays),
+    [tenderStages, locale, appliedTenderQtyByPackage, inventoryOverlays],
   )
   const orderedMissions = React.useMemo(() => orderMissions(missions, missionPriority), [missions, missionPriority])
   const validationActions = React.useMemo(
@@ -710,17 +709,7 @@ export function OperatingLoopPage() {
         <RecordDispositionModal
           action={dispositionAction}
           overlays={inventoryOverlays}
-          appliedQty={appliedTenderQtyByPackage[requirementById(dispositionAction.requirementId)?.packageId ?? ""]}
           onRecord={recordInventoryDisposition}
-          onApplyResidual={(packageId) => applyResidualToTender(packageId, ACTIVE_USER.name)}
-          onOpenTenderStudio={(packageId) => {
-            setDispositionAction(null)
-            openTenderStudio(packageId)
-          }}
-          onOpenBidEvaluation={(packageId) => {
-            setDispositionAction(null)
-            openBidEvaluation(packageId)
-          }}
           onClose={() => setDispositionAction(null)}
         />
       )}

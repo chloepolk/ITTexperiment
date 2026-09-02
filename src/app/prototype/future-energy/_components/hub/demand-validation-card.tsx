@@ -3,12 +3,18 @@
 import * as React from "react"
 import { SafeIcon } from "@/components/prosera-lib/safe-icon"
 import { Button } from "@/components/ui/prosera/button"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/prosera/avatar"
 import { cn } from "@/lib/utils"
 import { formatDateDMY } from "@/lib/compass/locale-display"
+import { formatCurrency, getInitials } from "@/app/prototype/future-energy/_diamond/stages"
 import { pcmButton } from "../motion"
-import { employeeByRole } from "../../data/_people"
+import { employeeByRole, EMPLOYEES } from "../../data/_people"
+import { tenderById } from "../../data/future-energy/_tenders"
 import { useT } from "../../_i18n/use-t"
 import { useStore } from "../../_store"
+import { VALUE_BADGE_CLS, valueBadgeAmount } from "../value-tones"
+import { ACTIVE_USER } from "./active-user"
+import { avatarColor, avatarSrcFor } from "./avatar-color"
 import {
   CANDIDATE_MATCHES,
   inventoryById,
@@ -55,6 +61,12 @@ export function DemandValidationCard({
   const owner = employeeByRole(action.owner)
   const summary = requirement ? summarizeRequirement(requirement, overlays) : null
   const ownerName = owner?.name ?? action.owner
+  const pkg = requirement ? tenderById(requirement.packageId) : undefined
+  const isAssignedToYou = ownerName === ACTIVE_USER.name
+  const displayOwner = isAssignedToYou ? t("common.you") : ownerName
+  const ownerAvatarSrc = avatarSrcFor(ownerName, EMPLOYEES, ACTIVE_USER.name)
+  const initials = isAssignedToYou ? t("common.you").charAt(0).toUpperCase() : getInitials(ownerName)
+  const valueType = pkg?.valueType === "protection" ? "protection" : "creation"
 
   if (!match || !requirement || !summary) return null
 
@@ -80,15 +92,43 @@ export function DemandValidationCard({
           <h2 className="text-[14px] font-semibold leading-snug text-[var(--color-text-primary)]">
             {action.actionType} · {requirement.description}
           </h2>
-          <p className="mt-1.5 text-[11px] text-[var(--color-text-secondary)]">
-            <span className="font-medium text-[var(--color-text-primary)]">{ownerName}</span>
-            <span>{` · ${t("demand.due")} ${formatDateDMY(action.dueDate)}`}</span>
-          </p>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <p className="inline-flex items-center gap-1.5 rounded-[6px] bg-[var(--color-bg-subtle)] px-2 py-1 text-[11px] text-[var(--color-text-secondary)]">
+              <Avatar className="size-4 shrink-0">
+                {ownerAvatarSrc ? <AvatarImage src={ownerAvatarSrc} alt="" /> : null}
+                <AvatarFallback className={cn(avatarColor(ownerName), "text-[8px] font-semibold text-white")}>
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              <span>
+                {isAssignedToYou ? (
+                  <span className="font-medium text-[var(--color-text-primary)]">{t("missionCard.assignedToYou")}</span>
+                ) : (
+                  <span className="font-medium text-[var(--color-text-primary)]">{t("missionCard.assignedNamed", { name: displayOwner })}</span>
+                )}
+              </span>
+            </p>
+            {action.dueDate && (
+              <span className="text-[11px] text-[var(--color-text-secondary)]">
+                {`${t("demand.due")} ${formatDateDMY(action.dueDate)}`}
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
           <span className="rounded-[8px] border border-[var(--color-accent-warning-text)] bg-[var(--color-bg-surface)] px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-accent-warning-text)]">
             {t("demand.statusReview")}
           </span>
+          {pkg && (
+            <span className={cn("inline-flex items-baseline gap-1.5 rounded-[8px] px-2.5 py-1.5", VALUE_BADGE_CLS[valueType])}>
+              <span className="text-[15px] font-bold tabular-nums">
+                {valueBadgeAmount(formatCurrency(pkg.targetSavings, locale), valueType)}
+              </span>
+              <span className="text-[10px] font-semibold uppercase tracking-wide opacity-80">
+                {valueType === "creation" ? t("missionCard.create") : t("missionCard.protect")}
+              </span>
+            </span>
+          )}
           <SafeIcon
             name={expanded ? "ChevronUp" : "ChevronDown"}
             className="size-4 text-[var(--color-text-muted)]"
@@ -142,7 +182,7 @@ export function DemandValidationCard({
         </dl>
       )}
 
-      <div className="mt-3 flex flex-wrap items-center gap-1.5 pl-9">
+      <div className="mt-3 flex flex-wrap items-center justify-end gap-1.5 pl-9">
         <Button
           type="button"
           onClick={onRecordClick}

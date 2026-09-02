@@ -323,7 +323,7 @@ function EmptyPackageState({ status, pkg }: { status: EvalStatus; pkg: TenderPac
 
 export function BidEvaluationPage() {
   const t = useT()
-  const { focusEvalPackageId, tenderStages, openBidEvaluation, openTenderStudio, openActionCentre, locale, awardApprovals, submitAwardRecommendation, inventoryOverlays, appliedTenderQtyByPackage, recordInventoryDisposition, applyResidualToTender } = useStore()
+  const { focusEvalPackageId, tenderStages, openBidEvaluation, openTenderStudio, openActionCentre, locale, awardApprovals, submitAwardRecommendation, inventoryOverlays, appliedTenderQtyByPackage, recordInventoryDisposition } = useStore()
   const rows = React.useMemo(() => buildPackageRows(tenderStages, locale), [tenderStages, locale])
 
   const defaultId =
@@ -544,7 +544,7 @@ export function BidEvaluationPage() {
                   </div>
                 )}
                 <p className="mt-1 max-w-2xl text-[12px] text-[var(--color-text-secondary)]">
-                  {localizeQuantity(displayPackageQuantity(pkg.id, pkg.quantity, appliedTenderQtyByPackage, locale), locale)} · {t("bidEval.budget")} {formatCurrency(pkg.budget, locale)} · {t("bidEval.closes")}{" "}
+                  {localizeQuantity(displayPackageQuantity(pkg.id, pkg.quantity, appliedTenderQtyByPackage, locale, inventoryOverlays), locale)} · {t("bidEval.budget")} {formatCurrency(pkg.budget, locale)} · {t("bidEval.closes")}{" "}
                   {formatDateDMY(pkg.submissionDeadline)}
                 </p>
                 {validationSummary && (
@@ -739,14 +739,7 @@ export function BidEvaluationPage() {
         <RecordDispositionModal
           action={heldDispositionAction}
           overlays={inventoryOverlays}
-          appliedQty={pkg ? appliedTenderQtyByPackage[pkg.id] : undefined}
           onRecord={recordInventoryDisposition}
-          onApplyResidual={(packageId) => applyResidualToTender(packageId, ACTIVE_USER.name)}
-          onOpenTenderStudio={(packageId) => {
-            setHeldDispositionAction(undefined)
-            openTenderStudio(packageId)
-          }}
-          onOpenBidEvaluation={() => setHeldDispositionAction(undefined)}
           onClose={() => setHeldDispositionAction(undefined)}
         />
       )}

@@ -165,9 +165,9 @@ const en = {
     valueProtection: "Value Protection",
     valueCreation: "Value Creation",
     heroHeadline:
-      "{amount} of negotiated savings is in play across the Meridian tender pipeline.",
+      "{amount} is the negotiated savings target across the Meridian tender pipeline.",
     heroBody:
-      "{count} packages are live. Four returns are in on the 66 kV array cable ITT — run the gated evaluation before the award recommendation.",
+      "{count} packages are open. Four returns are in on the 66 kV array cable ITT. Run the gated evaluation before the award recommendation.",
     heroReasoningSummary:
       "BluePilot prioritised the tender pipeline by submission deadline, savings target and installation critical path.",
     ingestingEdit: "Ingesting your edit…",
@@ -205,7 +205,7 @@ const en = {
     selectReason: "Select a reason",
     approveFrom: "Approve {qty} from {id}",
     residualPreview:
-      "If recorded, approved inventory would be {approved} and residual procurement {residual} of {requested} requested. The proposed tender quantity changes only after a separate confirmation.",
+      "If recorded, approved inventory would be {approved} and residual procurement {residual} of {requested} requested. The proposed ITT quantity becomes {residual}.",
     avoidanceIfApproved:
       "Identified purchase-avoidance opportunity if this quantity is approved: {amount} (not realised savings).",
     recordDisposition: "Record disposition",
@@ -657,7 +657,7 @@ const en = {
     more: "+{count} more",
     matrixTitle: "Compass Profitability Matrix",
     matrixBody: "Every recommendation and the euros behind it — what it does to margin, and how fast.",
-    totalAtStake: "Total at stake",
+    totalAtStake: "Savings target",
     protectionBlurb: "Defend margin we already have",
     creationBlurb: "Grow new revenue and margin",
     shock: "Shock",

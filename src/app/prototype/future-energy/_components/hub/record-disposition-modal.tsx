@@ -2,10 +2,8 @@
 
 import * as React from "react"
 import { SafeIcon } from "@/components/prosera-lib/safe-icon"
-import { Button } from "@/components/ui/prosera/button"
 import { cn } from "@/lib/utils"
 import { formatDateDMY } from "@/lib/compass/locale-display"
-import { pcmButton } from "../motion"
 import { employeeByRole } from "../../data/_people"
 import { ACTIVE_USER } from "./active-user"
 import { useT } from "../../_i18n/use-t"
@@ -21,7 +19,6 @@ import {
   type ValidationAction,
 } from "../../data/future-energy/_inventory"
 import {
-  canApplyResidualToTender,
   classificationLabel,
   formatQty,
   mergeMatch,
@@ -57,16 +54,11 @@ function formatAvoidance(eur: number, locale: "en" | "fr"): string {
 export function RecordDispositionModal({
   action,
   overlays,
-  appliedQty,
   onRecord,
-  onApplyResidual,
-  onOpenTenderStudio,
-  onOpenBidEvaluation,
   onClose,
 }: {
   action: ValidationAction
   overlays: MatchOverlayMap
-  appliedQty?: number
   onRecord: (args: {
     matchId: string
     disposition: Disposition
@@ -74,9 +66,6 @@ export function RecordDispositionModal({
     reason: string
     actor: string
   }) => void
-  onApplyResidual: (packageId: string) => void
-  onOpenTenderStudio: (packageId: string) => void
-  onOpenBidEvaluation: (packageId: string) => void
   onClose: () => void
 }) {
   const t = useT()
@@ -95,13 +84,11 @@ export function RecordDispositionModal({
   const [partialQty, setPartialQty] = React.useState(usable)
   const [retainReason, setRetainReason] = React.useState<(typeof RETAIN_REASONS)[number] | "">("")
   const [rejectReason, setRejectReason] = React.useState(match?.reason ?? action.question)
-  const [recorded, setRecorded] = React.useState(false)
 
   React.useEffect(() => {
     setPartialQty(usable)
     setRejectReason(match?.reason || action.question)
     setDisposition(null)
-    setRecorded(false)
   }, [action.id, usable, match?.reason, action.question])
 
   if (!match || !requirement || !summary) return null
@@ -113,15 +100,12 @@ export function RecordDispositionModal({
       : disposition === "use-partial"
         ? Math.max(0, Math.min(partialQty, usable))
         : 0
-  const previewApproved = recorded ? summary.approvedInventoryQty : othersApproved + thisApproved
+  const previewApproved = othersApproved + thisApproved
   const residual = residualProcurementQty(requirement.requestedQty, previewApproved)
   const avoidanceEur = thisApproved * requirement.newPurchaseUnitBaseline
   const requestedLabel = formatQty(requirement.requestedQty, requirement.uom, locale)
   const approvedLabel = formatQty(previewApproved, requirement.uom, locale)
   const residualLabel = formatQty(residual, requirement.uom, locale)
-  const canWriteResidual =
-    recorded && canApplyResidualToTender(summary) && appliedQty !== summary.residualProcurementQty
-  const alreadyWritten = recorded && appliedQty === summary.residualProcurementQty
 
   const reason =
     disposition === "retain-full-quantity"
@@ -225,120 +209,76 @@ export function RecordDispositionModal({
             {classificationLabel(match.classification, locale)}
           </p>
 
-          {!recorded ? (
-            <>
-              <div className="flex flex-wrap gap-1.5">
-                {DISPOSITION_KEYS.map((d) => (
-                  <button
-                    key={d.id}
-                    type="button"
-                    onClick={() => setDisposition(d.id)}
-                    className={cn(
-                      "rounded-[8px] border px-2.5 py-1 text-[11px] font-medium",
-                      disposition === d.id
-                        ? "border-[var(--color-bg-inverse)] bg-[var(--color-bg-inverse)] text-[var(--color-text-inverse)]"
-                        : "border-[var(--color-border-default)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-subtle)]",
-                    )}
-                  >
-                    {t(d.key)}
-                  </button>
+          <div className="flex flex-wrap gap-1.5">
+            {DISPOSITION_KEYS.map((d) => (
+              <button
+                key={d.id}
+                type="button"
+                onClick={() => setDisposition(d.id)}
+                className={cn(
+                  "rounded-[8px] border px-2.5 py-1 text-[11px] font-medium",
+                  disposition === d.id
+                    ? "border-[var(--color-bg-inverse)] bg-[var(--color-bg-inverse)] text-[var(--color-text-inverse)]"
+                    : "border-[var(--color-border-default)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-subtle)]",
+                )}
+              >
+                {t(d.key)}
+              </button>
+            ))}
+          </div>
+          {disposition == null && (
+            <p className="text-[12px] text-[var(--color-text-muted)]">{t("demand.pickDisposition")}</p>
+          )}
+          {disposition === "use-partial" && (
+            <label className="block text-[12px] text-[var(--color-text-secondary)]">
+              {t("demand.approvedQty")}
+              <input
+                type="number"
+                min={1}
+                max={usable}
+                value={partialQty}
+                onChange={(e) => setPartialQty(Number(e.target.value))}
+                className="mt-1 w-full rounded-[8px] border border-[var(--color-border-default)] bg-[var(--color-bg-canvas)] px-2.5 py-1.5 text-[13px] text-[var(--color-text-primary)]"
+              />
+            </label>
+          )}
+          {disposition === "retain-full-quantity" && (
+            <label className="block text-[12px] text-[var(--color-text-secondary)]">
+              {t("demand.reasonRequired")}
+              <select
+                value={retainReason}
+                onChange={(e) => setRetainReason(e.target.value as typeof retainReason)}
+                className="mt-1 w-full rounded-[8px] border border-[var(--color-border-default)] bg-[var(--color-bg-canvas)] px-2.5 py-1.5 text-[13px] text-[var(--color-text-primary)]"
+              >
+                <option value="">{t("demand.selectReason")}</option>
+                {RETAIN_REASONS.map((r) => (
+                  <option key={r} value={r}>{t(RETAIN_REASON_KEYS[r])}</option>
                 ))}
-              </div>
-              {disposition == null && (
-                <p className="text-[12px] text-[var(--color-text-muted)]">{t("demand.pickDisposition")}</p>
-              )}
-              {disposition === "use-partial" && (
-                <label className="block text-[12px] text-[var(--color-text-secondary)]">
-                  {t("demand.approvedQty")}
-                  <input
-                    type="number"
-                    min={1}
-                    max={usable}
-                    value={partialQty}
-                    onChange={(e) => setPartialQty(Number(e.target.value))}
-                    className="mt-1 w-full rounded-[8px] border border-[var(--color-border-default)] bg-[var(--color-bg-canvas)] px-2.5 py-1.5 text-[13px] text-[var(--color-text-primary)]"
-                  />
-                </label>
-              )}
-              {disposition === "retain-full-quantity" && (
-                <label className="block text-[12px] text-[var(--color-text-secondary)]">
-                  {t("demand.reasonRequired")}
-                  <select
-                    value={retainReason}
-                    onChange={(e) => setRetainReason(e.target.value as typeof retainReason)}
-                    className="mt-1 w-full rounded-[8px] border border-[var(--color-border-default)] bg-[var(--color-bg-canvas)] px-2.5 py-1.5 text-[13px] text-[var(--color-text-primary)]"
-                  >
-                    <option value="">{t("demand.selectReason")}</option>
-                    {RETAIN_REASONS.map((r) => (
-                      <option key={r} value={r}>{t(RETAIN_REASON_KEYS[r])}</option>
-                    ))}
-                  </select>
-                </label>
-              )}
-              {disposition === "reject-match" && (
-                <label className="block text-[12px] text-[var(--color-text-secondary)]">
-                  {t("demand.reasonRequired")}
-                  <input
-                    type="text"
-                    value={rejectReason}
-                    onChange={(e) => setRejectReason(e.target.value)}
-                    className="mt-1 w-full rounded-[8px] border border-[var(--color-border-default)] bg-[var(--color-bg-canvas)] px-2.5 py-1.5 text-[13px] text-[var(--color-text-primary)]"
-                  />
-                </label>
-              )}
-              {disposition != null && (
-                <p className="text-[12px] leading-relaxed text-[var(--color-text-secondary)]">
-                  {t("demand.residualPreview", {
-                    approved: approvedLabel,
-                    residual: residualLabel,
-                    requested: requestedLabel,
-                  })}
-                  {thisApproved > 0
-                    ? ` ${t("demand.avoidanceIfApproved", { amount: formatAvoidance(avoidanceEur, locale) })}`
-                    : ""}
-                </p>
-              )}
-            </>
-          ) : (
-            <div className="space-y-3">
-              <p className="text-[12px] font-medium text-[var(--color-accent-positive-text)]">{t("demand.recorded")}</p>
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-                {t("demand.nextSteps")}
-              </p>
-              <div className="flex flex-col gap-1.5">
-                {canWriteResidual && (
-                  <Button
-                    type="button"
-                    onClick={() => onApplyResidual(requirement.packageId)}
-                    className={cn(pcmButton, "justify-start gap-1.5 rounded-[10px] bg-[var(--color-bg-inverse)] text-[12px] font-semibold text-[var(--color-text-inverse)] hover:opacity-90")}
-                  >
-                    <SafeIcon name="PenLine" className="h-3.5 w-3.5" />
-                    {t("demand.writeToItt", { residual: residualLabel })}
-                  </Button>
-                )}
-                {alreadyWritten && (
-                  <p className="text-[12px] text-[var(--color-text-secondary)]">
-                    {t("demand.proposedIs", { residual: residualLabel, requested: requestedLabel })}
-                  </p>
-                )}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => onOpenTenderStudio(requirement.packageId)}
-                  className="h-auto justify-start rounded-[10px] border border-[var(--color-border-default)] px-3 py-2 text-[12px] font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-subtle)]"
-                >
-                  {t("demand.openTenderStudio")}
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => onOpenBidEvaluation(requirement.packageId)}
-                  className="h-auto justify-start rounded-[10px] border border-[var(--color-border-default)] px-3 py-2 text-[12px] font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-subtle)]"
-                >
-                  {t("demand.openBidEvaluation")}
-                </Button>
-              </div>
-            </div>
+              </select>
+            </label>
+          )}
+          {disposition === "reject-match" && (
+            <label className="block text-[12px] text-[var(--color-text-secondary)]">
+              {t("demand.reasonRequired")}
+              <input
+                type="text"
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                className="mt-1 w-full rounded-[8px] border border-[var(--color-border-default)] bg-[var(--color-bg-canvas)] px-2.5 py-1.5 text-[13px] text-[var(--color-text-primary)]"
+              />
+            </label>
+          )}
+          {disposition != null && (
+            <p className="text-[12px] leading-relaxed text-[var(--color-text-secondary)]">
+              {t("demand.residualPreview", {
+                approved: approvedLabel,
+                residual: residualLabel,
+                requested: requestedLabel,
+              })}
+              {thisApproved > 0
+                ? ` ${t("demand.avoidanceIfApproved", { amount: formatAvoidance(avoidanceEur, locale) })}`
+                : ""}
+            </p>
           )}
         </div>
 
@@ -350,27 +290,25 @@ export function RecordDispositionModal({
           >
             {t("common.cancel")}
           </button>
-          {!recorded && (
-            <button
-              type="button"
-              disabled={!canRecord}
-              onClick={() => {
-                if (!disposition) return
-                onRecord({
-                  matchId: match.id,
-                  disposition,
-                  approvedQty: thisApproved,
-                  reason,
-                  actor: ACTIVE_USER.name,
-                })
-                setRecorded(true)
-              }}
-              className="inline-flex items-center gap-1.5 rounded-md bg-[var(--color-bg-inverse)] px-3 py-1.5 text-[12px] font-semibold text-[var(--color-text-inverse)] transition-opacity hover:opacity-90 disabled:opacity-50"
-            >
-              <SafeIcon name="Check" className="h-3.5 w-3.5" />
-              {t("demand.recordDisposition")}
-            </button>
-          )}
+          <button
+            type="button"
+            disabled={!canRecord}
+            onClick={() => {
+              if (!disposition) return
+              onRecord({
+                matchId: match.id,
+                disposition,
+                approvedQty: thisApproved,
+                reason,
+                actor: ACTIVE_USER.name,
+              })
+              onClose()
+            }}
+            className="inline-flex items-center gap-1.5 rounded-md bg-[var(--color-bg-inverse)] px-3 py-1.5 text-[12px] font-semibold text-[var(--color-text-inverse)] transition-opacity hover:opacity-90 disabled:opacity-50"
+          >
+            <SafeIcon name="Check" className="h-3.5 w-3.5" />
+            {t("demand.recordDisposition")}
+          </button>
         </div>
       </div>
     </div>

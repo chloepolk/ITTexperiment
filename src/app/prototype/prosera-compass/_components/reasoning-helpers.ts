@@ -129,7 +129,7 @@ export function buildActionBoardHeroReasoning(
       : "BluePilot ranked packages by submission deadline, savings target and installation critical path.",
     steps,
     evidence,
-    conclusion: `${active.length} packages are live on this board. Follow the view sources links to inspect each underlying document or workspace.`,
+    conclusion: `${active.length} packages are open on this board. Follow the view sources links to inspect each underlying document or workspace.`,
     citations,
   }
 }

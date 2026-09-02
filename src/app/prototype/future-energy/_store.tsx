@@ -7,15 +7,16 @@ import {
   overlayFromDisposition,
   ittIssueBlocked,
   awardSubmissionBlocked,
-  canApplyResidualToTender,
   formatQty,
   formatTenderQty,
+  seedAppliedTenderQty,
   summarizePackage,
   openValidationActionForPackage,
 } from "./data/future-energy/_demand-validation"
 import {
   CANDIDATE_MATCHES,
   SEED_AUDIT_EVENTS,
+  requirementById,
   type AuditEvent,
   type Disposition,
 } from "./data/future-energy/_inventory"
@@ -248,7 +249,7 @@ export interface AcmeDemoStore {
     reason: string
     actor: string
   }) => void
-  /** Residual procurement quantity written into the proposed ITT after user confirmation. */
+  /** Residual procurement quantity written into the proposed ITT. */
   appliedTenderQtyByPackage: Record<string, number>
   applyResidualToTender: (packageId: string, actor: string) => void
 }
@@ -652,14 +653,14 @@ function rewriteIttQuantity(itt: IttDocument, from: string[], to: string): IttDo
   }
 }
 
-function qtyAliases(requestedQty: number, uom: string, packageQty: string): string[] {
-  return Array.from(new Set([
-    packageQty,
-    formatTenderQty(requestedQty, uom, "en"),
-    formatTenderQty(requestedQty, uom, "fr"),
-    formatQty(requestedQty, uom, "en"),
-    formatQty(requestedQty, uom, "fr"),
-  ]))
+function qtyAliases(requestedQty: number, uom: string, packageQty: string, extraQtys: number[] = []): string[] {
+  const formatted = [requestedQty, ...extraQtys].flatMap((n) => [
+    formatTenderQty(n, uom, "en"),
+    formatTenderQty(n, uom, "fr"),
+    formatQty(n, uom, "en"),
+    formatQty(n, uom, "fr"),
+  ])
+  return Array.from(new Set([packageQty, ...formatted]))
 }
 
 export function AcmeDemoStoreProvider({ children }: { children: React.ReactNode }) {
@@ -692,7 +693,7 @@ export function AcmeDemoStoreProvider({ children }: { children: React.ReactNode 
 
   const [inventoryOverlays, setInventoryOverlays] = React.useState<MatchOverlayMap>({})
   const [inventoryAudit, setInventoryAudit] = React.useState<AuditEvent[]>(SEED_AUDIT_EVENTS)
-  const [appliedTenderQtyByPackage, setAppliedTenderQtyByPackage] = React.useState<Record<string, number>>({})
+  const [appliedTenderQtyByPackage, setAppliedTenderQtyByPackage] = React.useState<Record<string, number>>(() => seedAppliedTenderQty({}))
   const allFindings = React.useMemo(() => generateFindings(inventoryOverlays), [inventoryOverlays])
 
   const actions = React.useMemo(() => ({
@@ -1085,35 +1086,8 @@ export function AcmeDemoStoreProvider({ children }: { children: React.ReactNode 
 
   const inventoryOverlaysRef = React.useRef(inventoryOverlays)
   inventoryOverlaysRef.current = inventoryOverlays
-
-  const recordInventoryDisposition = React.useCallback((args: {
-    matchId: string
-    disposition: Disposition
-    approvedQty: number
-    reason: string
-    actor: string
-  }) => {
-    const seed = CANDIDATE_MATCHES.find(m => m.id === args.matchId)
-    if (!seed) return
-    const overlay = overlayFromDisposition({
-      match: seed,
-      disposition: args.disposition,
-      approvedQty: args.approvedQty,
-      reason: args.reason,
-      actor: args.actor,
-    })
-    setInventoryOverlays(prev => ({ ...prev, [args.matchId]: overlay }))
-    const event: AuditEvent = {
-      id: `EVT-${Date.now().toString(36)}`,
-      requirementId: seed.requirementId,
-      eventType: `Disposition: ${args.disposition}`,
-      actor: args.actor,
-      timestamp: overlay.timestamp,
-      detail: args.reason,
-      source: args.matchId,
-    }
-    setInventoryAudit(prev => [...prev, event])
-  }, [])
+  const appliedTenderQtyRef = React.useRef(appliedTenderQtyByPackage)
+  appliedTenderQtyRef.current = appliedTenderQtyByPackage
 
   const advanceTenderStage = React.useCallback((packageId: string, stage: MissionStage) => {
     if (stage === "decide" && ittIssueBlocked(packageId, inventoryOverlaysRef.current)) return
@@ -1289,35 +1263,48 @@ export function AcmeDemoStoreProvider({ children }: { children: React.ReactNode 
     })
   }, [])
 
-  const applyResidualToTender = React.useCallback((packageId: string, actor: string) => {
-    const summary = summarizePackage(packageId, inventoryOverlaysRef.current)
-    if (!summary || !canApplyResidualToTender(summary)) return
+  const writeResidualToTender = React.useCallback((
+    packageId: string,
+    overlays: MatchOverlayMap,
+    actor: string,
+    audit = true,
+  ) => {
+    const summary = summarizePackage(packageId, overlays)
+    if (!summary) return
     const residual = summary.residualProcurementQty
     const req = summary.requirement
     const pkg = TENDER_PACKAGES.find(p => p.id === packageId)
     const storedQty = formatTenderQty(residual, req.uom, "en")
     const nextQty = formatTenderQty(residual, req.uom, locale)
-    const from = qtyAliases(req.requestedQty, req.uom, pkg?.quantity ?? "")
-    setAppliedTenderQtyByPackage(prev => ({ ...prev, [packageId]: residual }))
+    const previous = appliedTenderQtyRef.current[packageId]
+    const from = qtyAliases(req.requestedQty, req.uom, pkg?.quantity ?? "", previous != null ? [previous] : [])
+    appliedTenderQtyRef.current = { ...appliedTenderQtyRef.current, [packageId]: residual }
+    setAppliedTenderQtyByPackage(appliedTenderQtyRef.current)
     setDraftedTenders(prev => {
+      let changed = false
       const next = prev.map(d => {
         if (d.packageId !== packageId) return d
+        const aliases = d.quantity && !from.includes(d.quantity) ? [...from, d.quantity] : from
+        if (d.quantity === storedQty) return d
+        changed = true
         return {
           ...d,
           quantity: storedQty,
-          prompt: rewriteTextQty(d.prompt, from, nextQty),
+          prompt: rewriteTextQty(d.prompt, aliases, nextQty),
           scope: {
             ...d.scope,
-            objective: rewriteTextQty(d.scope.objective, from, nextQty),
-            projectSummary: d.scope.projectSummary.map(s => rewriteTextQty(s, from, nextQty)),
-            considerations: d.scope.considerations.map(s => rewriteTextQty(s, from, nextQty)),
+            objective: rewriteTextQty(d.scope.objective, aliases, nextQty),
+            projectSummary: d.scope.projectSummary.map(s => rewriteTextQty(s, aliases, nextQty)),
+            considerations: d.scope.considerations.map(s => rewriteTextQty(s, aliases, nextQty)),
           },
-          itt: rewriteIttQuantity(d.itt, from, nextQty),
+          itt: rewriteIttQuantity(d.itt, aliases, nextQty),
         }
       })
+      if (!changed) return prev
       try { localStorage.setItem("fe-drafted-tenders", JSON.stringify(next)) } catch {}
       return next
     })
+    if (!audit || previous === residual) return
     const event: AuditEvent = {
       id: `EVT-${Date.now().toString(36)}`,
       requirementId: req.id,
@@ -1325,12 +1312,57 @@ export function AcmeDemoStoreProvider({ children }: { children: React.ReactNode 
       actor,
       timestamp: new Date().toISOString(),
       detail: locale === "fr"
-        ? `QuantitÃ© dâ€™achat rÃ©siduelle ${nextQty} Ã©crite dans lâ€™AO proposÃ© (demandÃ© ${formatTenderQty(req.requestedQty, req.uom, "fr")}).`
+        ? `Quantité d’achat résiduelle ${nextQty} écrite dans l’AO proposé (demandé ${formatTenderQty(req.requestedQty, req.uom, "fr")}).`
         : `Wrote residual procurement quantity ${storedQty} into the proposed ITT (requested ${formatTenderQty(req.requestedQty, req.uom, "en")}).`,
       source: packageId,
     }
     setInventoryAudit(prev => [...prev, event])
   }, [locale])
+
+  const applyResidualToTender = React.useCallback((packageId: string, actor: string) => {
+    writeResidualToTender(packageId, inventoryOverlaysRef.current, actor, true)
+  }, [writeResidualToTender])
+
+  const recordInventoryDisposition = React.useCallback((args: {
+    matchId: string
+    disposition: Disposition
+    approvedQty: number
+    reason: string
+    actor: string
+  }) => {
+    const seed = CANDIDATE_MATCHES.find(m => m.id === args.matchId)
+    if (!seed) return
+    const overlay = overlayFromDisposition({
+      match: seed,
+      disposition: args.disposition,
+      approvedQty: args.approvedQty,
+      reason: args.reason,
+      actor: args.actor,
+    })
+    const nextOverlays = { ...inventoryOverlaysRef.current, [args.matchId]: overlay }
+    inventoryOverlaysRef.current = nextOverlays
+    setInventoryOverlays(nextOverlays)
+    const event: AuditEvent = {
+      id: `EVT-${Date.now().toString(36)}`,
+      requirementId: seed.requirementId,
+      eventType: `Disposition: ${args.disposition}`,
+      actor: args.actor,
+      timestamp: overlay.timestamp,
+      detail: args.reason,
+      source: args.matchId,
+    }
+    setInventoryAudit(prev => [...prev, event])
+    const requirement = requirementById(seed.requirementId)
+    if (requirement) writeResidualToTender(requirement.packageId, nextOverlays, args.actor, true)
+  }, [writeResidualToTender])
+
+  React.useEffect(() => {
+    for (const packageId of Object.keys(appliedTenderQtyRef.current)) {
+      writeResidualToTender(packageId, inventoryOverlaysRef.current, "", false)
+    }
+    // Seed residual into any locally stored ITT drafts once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   /* ---------------------------------------------------------------- */
   /*  Operating Loop task actions (session-only overlay)               */

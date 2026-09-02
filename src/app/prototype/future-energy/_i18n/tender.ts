@@ -163,19 +163,38 @@ const FR_DOCUMENT_TITLES: Record<string, string> = {
   "itt-template": "Appel d’offres — Modèle contrôlé",
 }
 
+export function tenderSuggestions(
+  locale: Locale,
+  qty: { cable: string; transitionPieces: string; hookBlock: string; seals: string },
+): string[] {
+  return locale === "fr"
+    ? [
+        `Rédiger l’AO pour ${qty.cable} de câble sous-marin inter-éoliennes 66 kV`,
+        `Préparer un appel d’offres pour ${qty.transitionPieces} de pièces de transition de monopieux`,
+        `Rédiger l’AO pour ${qty.hookBlock} — moufle de grue 3 000 t de remplacement`,
+        `Rédiger un AO pour ${qty.seals} de joints de J-tubes installables sans plongeur`,
+      ]
+    : [
+        `Draft the ITT for ${qty.cable} of 66 kV subsea array cable`,
+        `Prepare an invitation to tender for ${qty.transitionPieces} of monopile transition pieces`,
+        `Draft the tender for ${qty.hookBlock} — replacement 3000T crane hook block`,
+        `Draft an ITT for ${qty.seals} of diverless J-tube seals`,
+      ]
+}
+
 export const TENDER_SUGGESTIONS: Record<Locale, string[]> = {
-  en: [
-    "Draft the ITT for 5,000 metres of 66 kV subsea array cable",
-    "Prepare an invitation to tender for 24 monopile transition pieces",
-    "Draft the tender for the replacement 3000T crane hook block",
-    "Draft an ITT for 60 diverless J-tube seals",
-  ],
-  fr: [
-    "Rédiger l’AO pour 5 000 mètres de câble sous-marin inter-éoliennes 66 kV",
-    "Préparer un appel d’offres pour 24 pièces de transition de monopieux",
-    "Rédiger l’AO pour le moufle de grue 3 000 t de remplacement",
-    "Rédiger un AO pour 60 joints de J-tubes installables sans plongeur",
-  ],
+  en: tenderSuggestions("en", {
+    cable: "5,000 metres",
+    transitionPieces: "24 units",
+    hookBlock: "1 unit",
+    seals: "60 units",
+  }),
+  fr: tenderSuggestions("fr", {
+    cable: "5 000 mètres",
+    transitionPieces: "24 unités",
+    hookBlock: "1 unité",
+    seals: "60 unités",
+  }),
 }
 
 export function localizeComponentSpec(spec: ComponentSpec, locale: Locale): ComponentSpec {

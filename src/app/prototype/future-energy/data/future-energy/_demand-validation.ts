@@ -80,12 +80,30 @@ export function displayPackageQuantity(
   fallback: string,
   applied: Record<string, number> = {},
   locale: DisplayLocale = "en",
+  overlays: MatchOverlayMap = {},
 ): string {
-  const qty = applied[packageId]
-  if (qty == null) return fallback
   const req = requirementByPackageId(packageId)
   if (!req) return fallback
-  return formatTenderQty(qty, req.uom, locale)
+  const appliedQty = applied[packageId]
+  if (appliedQty != null) return formatTenderQty(appliedQty, req.uom, locale)
+  const summary = summarizePackage(packageId, overlays)
+  if (!summary) return fallback
+  if (summary.approvedInventoryQty > 0 || summary.residualProcurementQty !== req.requestedQty) {
+    return formatTenderQty(summary.residualProcurementQty, req.uom, locale)
+  }
+  return fallback
+}
+
+/** Residual procurement quantity already written, or implied, for each package with approved inventory. */
+export function seedAppliedTenderQty(overlays: MatchOverlayMap = {}): Record<string, number> {
+  const out: Record<string, number> = {}
+  for (const req of REQUIREMENTS) {
+    const summary = summarizePackage(req.packageId, overlays)
+    if (summary && summary.approvedInventoryQty > 0) {
+      out[req.packageId] = summary.residualProcurementQty
+    }
+  }
+  return out
 }
 
 export function identifiedAvoidanceEur(approvedInventoryQty: number, unitBaseline: number): number {
