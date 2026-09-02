@@ -1,0 +1,69 @@
+{
+  "name": "@prosera/i18n",
+  "version": "1.0.0",
+  "description": "Prosera locale kit — locales, glossary, LocaleProvider, LanguageSelector, LLM language instructions, and message parity checks for EN/FR/DE/ES demos.",
+  "license": "UNLICENSED",
+  "private": false,
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "src",
+    "starter",
+    "bin",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./src/core/index.ts",
+      "default": "./src/core/index.ts"
+    },
+    "./core": {
+      "types": "./src/core/index.ts",
+      "default": "./src/core/index.ts"
+    },
+    "./react": {
+      "types": "./src/react/index.ts",
+      "default": "./src/react/index.ts"
+    },
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "prosera-i18n": "./bin/prosera-i18n.mjs"
+  },
+  "peerDependencies": {
+    "next-intl": ">=3.0.0",
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
+  },
+  "peerDependenciesMeta": {
+    "next-intl": {
+      "optional": false
+    },
+    "react": {
+      "optional": false
+    },
+    "react-dom": {
+      "optional": false
+    }
+  },
+  "devDependencies": {
+    "@types/react": "^19",
+    "next-intl": "^4.14.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/braydensparks-prosera/prosera-i18n.git"
+  },
+  "keywords": [
+    "prosera",
+    "i18n",
+    "next-intl",
+    "localization"
+  ]
+}
